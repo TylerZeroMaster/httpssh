@@ -55,7 +55,7 @@ First create a key config (this assumes you are doing it on the client):
 
 ```sh
 # These options are the defaults, see help for more details
-$ httpssh keygen new my-key.bin --period 1 --sha256
+$ httpssh keygen my-key.bin --period 1 --sha256
 ```
 
 Copy the key to the server, then run:

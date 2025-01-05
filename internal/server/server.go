@@ -7,19 +7,8 @@ import (
 	"strings"
 
 	"github.com/TylerZeroMaster/httpssh/internal/totu"
-	"github.com/docopt/docopt-go"
 	"github.com/rs/zerolog"
 )
-
-const usage = `Tunnel ssh over http
-
-Usage:
-    httpssh serve [--port=<port>] [--totp-config=<path>]...
-
-Options:
-    --port=<port>           The port for the http server to listen on [default: 8080]
-    --totp-config=<path>    Path to TOTP config
-`
 
 var log = zerolog.New(os.Stderr).
 	With().
@@ -27,19 +16,12 @@ var log = zerolog.New(os.Stderr).
 	Logger().
 	Level(zerolog.DebugLevel)
 
-type cliOptions struct {
-	Serve      bool
-	Port       string
-	TotpConfig []string
+type Usage struct {
+	Port       string   `default:"8080" help:"The port for the http server to listen on"`
+	TotpConfig []string `help:"Path to TOTP config"`
 }
 
-func Main(argv []string, versionString string) error {
-	var options cliOptions
-	opts, err := docopt.ParseArgs(usage, argv, versionString)
-	if err != nil {
-		return err
-	}
-	opts.Bind(&options)
+func Serve(options Usage) error {
 	port := options.Port
 	port = ":" + strings.Trim(port, ": ")
 	if port == ":" {

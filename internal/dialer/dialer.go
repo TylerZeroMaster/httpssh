@@ -11,17 +11,14 @@ import (
 	"github.com/TylerZeroMaster/httpssh/internal/totp"
 	"github.com/TylerZeroMaster/httpssh/internal/totu"
 	"github.com/TylerZeroMaster/httptunnel"
-	"github.com/docopt/docopt-go"
 )
 
-const usage = `Dial ssh over http
-
-Usage:
-    httpssh dial <http-url> <ssh-host> <ssh-port> [--totp-config=<path>]
-
-Options:
-    --totp-config=<path>    Path to TOTP config
-`
+type DialUsage struct {
+	HttpUrl    string `arg:""`
+	SshHost    string `arg:""`
+	SshPort    string `arg:""`
+	TotpConfig string `help:"Path to TOTP config"`
+}
 
 var dialer = httptunnel.DefaultDialer
 
@@ -89,33 +86,20 @@ func subTotpCode(input, totpPath string) (string, error) {
 	return strings.ReplaceAll(input, "{{code}}", code), nil
 }
 
-type cliOptions struct {
-	Dial       bool
-	HTTPUrl    string `docopt:"<http-url>"`
-	SSHHost    string `docopt:"<ssh-host>"`
-	SSHPort    string `docopt:"<ssh-port>"`
-	TotpConfig string
-}
-
-func Main(argv []string, versionString string) error {
-	var options cliOptions
-	opts, err := docopt.ParseArgs(usage, argv, versionString)
+func Dial(args DialUsage) (err error) {
+	urlString := args.HttpUrl
+	totpPath := args.TotpConfig
+	err = isInt(args.SshPort)
 	if err != nil {
-		return err
-	}
-	opts.Bind(&options)
-	urlString := options.HTTPUrl
-	totpPath := options.TotpConfig
-	if err := isInt(options.SSHPort); err != nil {
-		return err
+		return
 	}
 	if len(totpPath) > 0 {
 		urlString, err = subTotpCode(urlString, totpPath)
 		if err != nil {
-			return err
+			return
 		}
 	}
-	dialSsh(urlString, options.SSHHost, options.SSHPort)
+	dialSsh(urlString, args.SshHost, args.SshPort)
 
 	return nil
 }
