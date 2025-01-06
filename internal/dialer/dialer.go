@@ -14,9 +14,9 @@ import (
 )
 
 type DialUsage struct {
-	HttpUrl    string `arg:""`
-	SshHost    string `arg:""`
-	SshPort    string `arg:""`
+	HttpUrl    string `arg:"" help:"The http(s) url to dial"`
+	SshHost    string `arg:"" help:"The hostname of the ssh host"`
+	SshPort    string `arg:"" help:"The port the ssh host is running ssh on"`
 	TotpConfig string `help:"Path to TOTP config"`
 }
 

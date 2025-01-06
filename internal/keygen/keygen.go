@@ -20,7 +20,7 @@ type GenUsage struct {
 }
 
 type DumpUsage struct {
-	KeyPath []string `arg:"" help:"Path to load key from"`
+	KeyPath []string `help:"Path to load key from" arg:""`
 	Json    bool     `help:"Print json dump"`
 }
 

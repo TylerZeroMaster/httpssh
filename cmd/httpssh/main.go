@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -17,13 +18,13 @@ const version = "0.1.0"
 func main() {
 	var versionString = "Version: " + version + "\n" + httptunnel.License
 	var usage struct {
-		Serve   server.Usage     `cmd:"" default:"1" help:"Start http ssh tunneling server"`
+		Serve   server.Usage     `cmd:"" help:"Start http ssh tunneling server" default:"1"`
 		Dial    dialer.DialUsage `cmd:"" help:"Dial http ssh tunneling server"`
 		Keygen  keygen.GenUsage  `cmd:"" help:"Generate totp configs"`
 		Keydump keygen.DumpUsage `cmd:"" help:"Dump totp configs"`
 		Version bool             `help:"Show version and license" short:"V"`
 	}
-	var err error
+	err := errors.New("unreachable")
 	ctx := kong.Parse(&usage)
 	if usage.Version {
 		fmt.Print(versionString)

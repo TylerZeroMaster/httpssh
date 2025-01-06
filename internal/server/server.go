@@ -17,7 +17,7 @@ var log = zerolog.New(os.Stderr).
 	Level(zerolog.DebugLevel)
 
 type Usage struct {
-	Port       string   `help:"The port for the http server to listen on" default:"8080" `
+	Port       string   `help:"The port for the http server to listen on" default:"8080"`
 	TotpConfig []string `help:"Path to TOTP config"`
 	Skew       int      `help:"Allow codes to be off by [-skew, skew] seconds" default:"0"`
 }
