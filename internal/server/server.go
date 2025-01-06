@@ -17,8 +17,9 @@ var log = zerolog.New(os.Stderr).
 	Level(zerolog.DebugLevel)
 
 type Usage struct {
-	Port       string   `default:"8080" help:"The port for the http server to listen on"`
+	Port       string   `help:"The port for the http server to listen on" default:"8080" `
 	TotpConfig []string `help:"Path to TOTP config"`
+	Skew       int      `help:"Allow codes to be off by [-skew, skew] seconds" default:"0"`
 }
 
 func Serve(options Usage) error {
@@ -30,7 +31,7 @@ func Serve(options Usage) error {
 	totpPaths := options.TotpConfig
 	if len(totpPaths) > 0 {
 		log.Info().Strs("path", totpPaths).Msg("using totp config")
-		validator, err := totu.NewValidator(totpPaths)
+		validator, err := totu.NewValidator(totpPaths, options.Skew)
 		if err != nil {
 			return err
 		}

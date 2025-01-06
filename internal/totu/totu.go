@@ -41,6 +41,7 @@ func (c CircularList[T]) Has(item T) bool {
 type Validator struct {
 	configPathsById map[[IDSize]byte]string
 	keysUsed        CircularList[string]
+	skew            int
 }
 
 func (validator *Validator) Validate(t time.Time, urlCode string) error {
@@ -66,12 +67,21 @@ func (validator *Validator) Validate(t time.Time, urlCode string) error {
 	if err != nil {
 		return err
 	}
-	serverSum := totp.HmacSum(t, config)
-	if hmac.Equal(serverSum, clientSum) {
+	// ASSUMPTION:
+	// If we use constant-time comparison and always compare the same number of
+	// codes, then the combined comparison time will be constant as well
+	matched := false
+	for i := -validator.skew; i <= validator.skew; i++ {
+		skewed := t.Add(time.Second * time.Duration(i))
+		serverSum := totp.HmacSum(skewed, config)
+		matched = hmac.Equal(serverSum, clientSum) || matched
+	}
+	if matched {
 		validator.keysUsed = validator.keysUsed.Put(urlCode)
 		return nil
+	} else {
+		return ErrCodeMismatch
 	}
-	return ErrCodeMismatch
 }
 
 func GetId(config *totp.Config) [IDSize]byte {
@@ -85,7 +95,7 @@ func GenerateCode(t time.Time, config *totp.Config) string {
 	return base64.URLEncoding.EncodeToString(idAndCode)
 }
 
-func NewValidator(configPaths []string) (Validator, error) {
+func NewValidator(configPaths []string, skew int) (Validator, error) {
 	configPathsById := make(map[[IDSize]byte]string)
 	for _, configPath := range configPaths {
 		config, err := totp.LoadConfig(configPath)
@@ -98,6 +108,7 @@ func NewValidator(configPaths []string) (Validator, error) {
 	return Validator{
 			configPathsById,
 			CircularList[string]{make([]string, 100), 0},
+			skew,
 		},
 		nil
 }

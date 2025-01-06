@@ -36,7 +36,7 @@ func TestTOTUHandler(t *testing.T) {
 		fout.Close()
 		configs = append(configs, config)
 	}
-	validator, err := totu.NewValidator(configPaths)
+	validator, err := totu.NewValidator(configPaths, 0)
 	if err != nil {
 		t.Fatalf("new validator error: %v", err)
 	}

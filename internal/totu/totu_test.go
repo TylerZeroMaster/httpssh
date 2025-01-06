@@ -2,6 +2,7 @@ package totu
 
 import (
 	"encoding/base64"
+	"errors"
 	"os"
 	"path"
 	"testing"
@@ -59,6 +60,17 @@ func TestGenerateCode(t *testing.T) {
 	}
 }
 
+type testCodeGen struct {
+	N      time.Time
+	config *totp.Config
+}
+
+func (gen *testCodeGen) Next() (string, time.Time) {
+	gen.N = gen.N.Add(1 * time.Second)
+	code := GenerateCode(gen.N, gen.config)
+	return code, gen.N
+}
+
 func TestValidator(t *testing.T) {
 	tmp := t.TempDir()
 	configPathsById := make(map[[IDSize]byte]string)
@@ -89,22 +101,27 @@ func TestValidator(t *testing.T) {
 		fout.Close()
 		configs = append(configs, config)
 	}
-	validator, err := NewValidator(configPaths)
+	validator, err := NewValidator(configPaths, 1)
 	if err != nil {
 		t.Fatalf("new validator: %v", err)
 	}
 	configA := configs[0]
 	configC := configs[2]
+	genA := testCodeGen{time.Unix(0, 0), configA}
+	genC := testCodeGen{time.Unix(0, 0), configC}
 	var code string
 	var expected error
+	var now time.Time
+
 	// valid
-	code = GenerateCode(time.Unix(0, 0), configA)
-	if err := validator.Validate(time.Unix(0, 0), code); err != nil {
-		t.Errorf("code should be valid, got err: %v", err)
+	expected = nil
+	code, now = genA.Next()
+	if err := validator.Validate(now, code); err != nil {
+		t.Errorf("expected err (%v), got: %v", expected, err)
 	}
-	code = GenerateCode(time.Unix(0, 0), configC)
-	if err := validator.Validate(time.Unix(0, 0), code); err != nil {
-		t.Errorf("code should be valid, got err: %v", err)
+	code, now = genC.Next()
+	if err := validator.Validate(now, code); err != nil {
+		t.Errorf("expected err (%v), got: %v", expected, err)
 	}
 	// code too short
 	code = ""
@@ -130,15 +147,19 @@ func TestValidator(t *testing.T) {
 		t.Errorf("expected err (%v), got: %v", expected, err)
 	}
 	// code used
-	code = GenerateCode(time.Unix(0, 0), configC)
+	code, now = genC.Next()
+	expected = nil
+	if err := validator.Validate(now, code); err != expected {
+		t.Errorf("expected err (%v), got: %v", expected, err)
+	}
 	expected = ErrCodeAlreadyUsed
-	if err := validator.Validate(time.Unix(0, 0), code); err != expected {
+	if err := validator.Validate(now, code); err != expected {
 		t.Errorf("expected err (%v), got: %v", expected, err)
 	}
 	// code mismatch
-	code = GenerateCode(time.Unix(10, 0), configC)
+	code, now = genC.Next()
 	expected = ErrCodeMismatch
-	if err := validator.Validate(time.Unix(15, 0), code); err != expected {
+	if err := validator.Validate(now.Add(time.Duration(validator.skew+1)*time.Second), code); err != expected {
 		t.Errorf("expected err (%v), got: %v", expected, err)
 	}
 	// encoding error
@@ -153,12 +174,13 @@ func TestValidator(t *testing.T) {
 			t.Fatalf("rm configC: %v", err)
 		}
 	}
-	code = GenerateCode(time.Unix(20, 0), configC)
-	if err := validator.Validate(time.Unix(0, 0), code); err == nil {
+	code, now = genC.Next()
+	if err := validator.Validate(now, code); !errors.Is(err, os.ErrNotExist) {
 		t.Error("expected error, got nil")
 	}
+
 	// NewValidator error
-	_, err = NewValidator(configPaths)
+	_, err = NewValidator(configPaths, 2)
 	if err == nil {
 		t.Error("expected error, got nil")
 	}
