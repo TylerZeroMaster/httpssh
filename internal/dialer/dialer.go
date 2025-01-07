@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/TylerZeroMaster/httpssh/internal"
 	"github.com/TylerZeroMaster/httpssh/internal/totp"
 	"github.com/TylerZeroMaster/httpssh/internal/totu"
 	"github.com/TylerZeroMaster/httptunnel"
@@ -43,9 +44,8 @@ func dialSsh(urlString, sshHost, sshPort string) error {
 	// WriteTo/ReadFrom directly. These try to use splice, or similar,
 	// to copy between pipes without copying into user address space
 	// see `man 2 splice` and `net/tcpsock_posix.go` for more info
-	// You can also use `strace` to verify that splice is being used
 	netConn, _, resp, err := dialer.Dial(urlString, options)
-	tcpConn := httptunnel.AssertTCPConn(netConn)
+	tcpConn := internal.AssertTCPConn(netConn)
 
 	if err != nil {
 		return err

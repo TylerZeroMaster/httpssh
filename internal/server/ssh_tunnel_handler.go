@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/TylerZeroMaster/httpssh/internal"
 	"github.com/TylerZeroMaster/httptunnel"
 )
 
@@ -46,13 +47,14 @@ func (handler SSHTunnelHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		// WriteTo/ReadFrom directly. These try to use splice, or similar,
 		// to copy between pipes without copying into user address space
 		// see `man 2 splice` and `net/tcpsock_posix.go` for more info
-		sshTcpConn := httptunnel.AssertTCPConn(sshConn)
+		// You can also use `strace` to verify that splice is being used
+		sshTcpConn := internal.AssertTCPConn(sshConn)
 		handler.sendHttpResp(w)
 		if httpConn, brw, err := hijacker.Hijack(w, r); err != nil {
 			log.Error().Err(err).Msg("hijack")
 		} else {
 			defer httpConn.Close()
-			httpTcpConn := httptunnel.AssertTCPConn(httpConn)
+			httpTcpConn := internal.AssertTCPConn(httpConn)
 			if brw.Reader.Buffered() > 0 {
 				log.Warn().Msg("client sent data prematurely")
 				brw.WriteTo(sshTcpConn)
