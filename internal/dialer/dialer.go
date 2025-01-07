@@ -99,7 +99,5 @@ func Dial(args DialUsage) (err error) {
 			return
 		}
 	}
-	dialSsh(urlString, args.SshHost, args.SshPort)
-
-	return nil
+	return dialSsh(urlString, args.SshHost, args.SshPort)
 }
