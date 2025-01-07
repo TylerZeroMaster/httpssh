@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
 
 	"github.com/TylerZeroMaster/httpssh/internal/dialer"
 	"github.com/TylerZeroMaster/httpssh/internal/keygen"
@@ -13,16 +12,16 @@ import (
 	"github.com/alecthomas/kong"
 )
 
-const version = "0.1.0"
+const version = "0.1.1"
 
 func main() {
 	var versionString = "Version: " + version + "\n" + httptunnel.License
 	var usage struct {
-		Serve   server.Usage     `cmd:"" help:"Start http ssh tunneling server" default:"1"`
-		Dial    dialer.DialUsage `cmd:"" help:"Dial http ssh tunneling server"`
-		Keygen  keygen.GenUsage  `cmd:"" help:"Generate totp configs"`
-		Keydump keygen.DumpUsage `cmd:"" help:"Dump totp configs"`
-		Version bool             `help:"Show version and license" short:"V"`
+		Serve   server.ServeCmd   `cmd:"" help:"Start http ssh tunneling server" default:"1"`
+		Dial    dialer.DialCmd    `cmd:"" help:"Dial http ssh tunneling server"`
+		Keygen  keygen.KeygenCmd  `cmd:"" help:"Generate totp configs"`
+		Keydump keygen.KeydumpCmd `cmd:"" help:"Dump totp configs"`
+		Version bool              `help:"Show version and license" short:"V"`
 	}
 	err := errors.New("unreachable")
 	ctx := kong.Parse(&usage)
@@ -30,18 +29,6 @@ func main() {
 		fmt.Print(versionString)
 		os.Exit(0)
 	}
-	commandParts := strings.Split(ctx.Command(), " ")
-	switch commandParts[0] {
-	case "serve":
-		err = server.Serve(usage.Serve)
-	case "dial":
-		err = dialer.Dial(usage.Dial)
-	case "keygen":
-		err = keygen.Keygen(usage.Keygen)
-	case "keydump":
-		err = keygen.Keydump(usage.Keydump)
-	}
-	if err != nil {
-		panic(err)
-	}
+	err = ctx.Run()
+	ctx.FatalIfErrorf(err)
 }

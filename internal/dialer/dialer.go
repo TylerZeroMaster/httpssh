@@ -14,11 +14,27 @@ import (
 	"github.com/TylerZeroMaster/httptunnel"
 )
 
-type DialUsage struct {
+type DialCmd struct {
 	HttpUrl    string `arg:"" help:"The http(s) url to dial"`
 	SshHost    string `arg:"" help:"The hostname of the ssh host"`
 	SshPort    string `arg:"" help:"The port the ssh host is running ssh on"`
 	TotpConfig string `help:"Path to TOTP config"`
+}
+
+func (args *DialCmd) Run() (err error) {
+	urlString := args.HttpUrl
+	totpPath := args.TotpConfig
+	err = isInt(args.SshPort)
+	if err != nil {
+		return
+	}
+	if len(totpPath) > 0 {
+		urlString, err = subTotpCode(urlString, totpPath)
+		if err != nil {
+			return
+		}
+	}
+	return dialSsh(urlString, args.SshHost, args.SshPort)
 }
 
 var dialer = httptunnel.DefaultDialer
@@ -84,20 +100,4 @@ func subTotpCode(input, totpPath string) (string, error) {
 	}
 	code := totu.GenerateCode(time.Now(), config)
 	return strings.ReplaceAll(input, "{{code}}", code), nil
-}
-
-func Dial(args DialUsage) (err error) {
-	urlString := args.HttpUrl
-	totpPath := args.TotpConfig
-	err = isInt(args.SshPort)
-	if err != nil {
-		return
-	}
-	if len(totpPath) > 0 {
-		urlString, err = subTotpCode(urlString, totpPath)
-		if err != nil {
-			return
-		}
-	}
-	return dialSsh(urlString, args.SshHost, args.SshPort)
 }

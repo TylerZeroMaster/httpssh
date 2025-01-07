@@ -12,16 +12,52 @@ import (
 	"github.com/google/uuid"
 )
 
-type GenUsage struct {
+type KeygenCmd struct {
 	KeyPath   []string `arg:"" help:"Path to save key to"`
 	Algorithm string   `help:"Use this algorithm for hmac" enum:"md5,sha1,sha256,sha512" default:"sha256"`
 	Period    int      `help:"Period, in seconds, between TOTP codes" default:"1"`
 	Json      bool     `help:"Print json dump"`
 }
 
-type DumpUsage struct {
+func (args *KeygenCmd) Run() error {
+	var algorithm totp.Algorithm
+	switch args.Algorithm {
+	case "sha1":
+		algorithm = totp.AlgorithmSHA1
+	case "sha512":
+		algorithm = totp.AlgorithmSHA512
+	case "md5":
+		algorithm = totp.AlgorithmMD5
+	default:
+		algorithm = totp.AlgorithmSHA256
+	}
+	for _, p := range args.KeyPath {
+		config, err := writeNewConfig(p, args.Period, algorithm)
+		if err != nil {
+			return err
+		}
+		if err := os.Chmod(p, 0o600); err != nil {
+			return err
+		}
+		dump(p, config, dumpOptions{args.Json})
+	}
+	return nil
+}
+
+type KeydumpCmd struct {
 	KeyPath []string `help:"Path to load key from" arg:""`
 	Json    bool     `help:"Print json dump"`
+}
+
+func (args *KeydumpCmd) Run() error {
+	for _, p := range args.KeyPath {
+		config, err := totp.LoadConfig(p)
+		if err != nil {
+			return err
+		}
+		dump(p, config, dumpOptions{args.Json})
+	}
+	return nil
 }
 
 type dumpOptions struct {
@@ -72,40 +108,4 @@ func writeNewConfig(path string, period int, algorithm totp.Algorithm) (*totp.Co
 		return nil, err
 	}
 	return config, nil
-}
-
-func Keygen(args GenUsage) error {
-	var algorithm totp.Algorithm
-	switch args.Algorithm {
-	case "sha1":
-		algorithm = totp.AlgorithmSHA1
-	case "sha512":
-		algorithm = totp.AlgorithmSHA512
-	case "md5":
-		algorithm = totp.AlgorithmMD5
-	default:
-		algorithm = totp.AlgorithmSHA256
-	}
-	for _, p := range args.KeyPath {
-		config, err := writeNewConfig(p, args.Period, algorithm)
-		if err != nil {
-			return err
-		}
-		if err := os.Chmod(p, 0o600); err != nil {
-			return err
-		}
-		dump(p, config, dumpOptions{args.Json})
-	}
-	return nil
-}
-
-func Keydump(args DumpUsage) error {
-	for _, p := range args.KeyPath {
-		config, err := totp.LoadConfig(p)
-		if err != nil {
-			return err
-		}
-		dump(p, config, dumpOptions{args.Json})
-	}
-	return nil
 }
