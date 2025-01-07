@@ -124,4 +124,3 @@ This package is used in the example client/server thusly:
 Not sure if these will ever be finished, but:
 
 - Finish writing tests
-- Add skew to totp validation in case of poorly synced clocks and/or high latency
