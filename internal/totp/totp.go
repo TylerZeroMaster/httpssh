@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/binary"
-	"encoding/hex"
 	"errors"
 	"hash"
 	"io"
@@ -85,7 +84,7 @@ func (config *Config) WriteTo(w io.Writer) (int64, error) {
 	return ConfigSize, binary.Write(w, binary.LittleEndian, config)
 }
 
-func Unmarshal(b []byte, config *Config) (err error) {
+func (config *Config) Unmarshal(b []byte) (err error) {
 	if version := b[0]; version != 1 {
 		err = ErrUnsupportedVersion
 	} else {
@@ -94,15 +93,42 @@ func Unmarshal(b []byte, config *Config) (err error) {
 	return
 }
 
-func ReadConfig(r io.Reader) (p *Config, err error) {
-	var config Config
-	p = &config
+func (config *Config) ReadFrom(r io.Reader) (int64, error) {
 	b, err := io.ReadAll(r)
 	if err != nil {
-		return
+		return 0, err
 	}
-	err = Unmarshal(b, p)
-	return
+	err = config.Unmarshal(b)
+	if err == nil {
+		return ConfigSize, nil
+	}
+	return 0, err
+}
+
+func (config *Config) HmacSum(t time.Time) []byte {
+	secretBytes := &config.Secret
+	period := config.Period
+	algorithm := config.Algorithm
+	counter := uint64(math.Floor(float64(t.Unix()) / float64(period)))
+	mac := hmac.New(algorithm.Decode(), secretBytes[:])
+	binary.Write(mac, binary.BigEndian, counter)
+	return mac.Sum(nil)
+}
+
+func (config *Config) GenEqual(t time.Time, rhs []byte) bool {
+	lhs := config.HmacSum(t)
+	return hmac.Equal(lhs, rhs)
+}
+
+func (config *Config) GenEqualSkewed(t time.Time, skew int, rhs []byte) bool {
+	matched := false
+	for i := -skew; i <= skew; i++ {
+		skewed := t.Add(time.Duration(i) * time.Second)
+		lhs := config.HmacSum(skewed)
+		// Intentionally slow
+		matched = hmac.Equal(lhs, rhs) || matched
+	}
+	return matched
 }
 
 func NewConfig(period uint64, algorithm Algorithm) (config *Config, err error) {
@@ -131,18 +157,14 @@ func HmacSum(t time.Time, config *Config) []byte {
 	return mac.Sum(nil)
 }
 
-func GenerateCode(t time.Time, config *Config) string {
-	sum := HmacSum(t, config)
-	return hex.EncodeToString(sum)
-}
-
 func LoadConfig(path string) (*Config, error) {
+	config := new(Config)
 	fin, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
 	defer fin.Close()
-	config, err := ReadConfig(fin)
+	_, err = config.ReadFrom(fin)
 	if err != nil {
 		return nil, err
 	}

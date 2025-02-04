@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"crypto/sha256"
 	"crypto/sha512"
+	"encoding/hex"
 	"hash"
 	"os"
 	"path"
@@ -41,27 +42,27 @@ func TestOTP(t *testing.T) {
 		Algorithm: AlgorithmMD5,
 	}
 	t.Run("generate codes", func(t *testing.T) {
-		code := GenerateCode(time.Unix(1, 1), config)
+		code := HmacSum(time.Unix(1, 1), config)
 
-		if expected := "e9d0328d77472ec81248fe28a1bf063a"; code != expected {
+		if expected := "e9d0328d77472ec81248fe28a1bf063a"; hex.EncodeToString(code) != expected {
 			t.Errorf("codes do not match: (%s) vs (%s)", expected, code)
 		}
 
-		code = GenerateCode(time.Unix(29, 1), config)
+		code = HmacSum(time.Unix(29, 1), config)
 
-		if expected := "e9d0328d77472ec81248fe28a1bf063a"; code != expected {
+		if expected := "e9d0328d77472ec81248fe28a1bf063a"; hex.EncodeToString(code) != expected {
 			t.Errorf("codes do not match: (%s) vs (%s)", expected, code)
 		}
 
-		code = GenerateCode(time.Unix(30, 1), config)
+		code = HmacSum(time.Unix(30, 1), config)
 
-		if expected := "6a3c23a3ac025bfd1e05b32e262bd210"; code != expected {
+		if expected := "6a3c23a3ac025bfd1e05b32e262bd210"; hex.EncodeToString(code) != expected {
 			t.Errorf("codes do not match: (%s) vs (%s)", expected, code)
 		}
 
-		code = GenerateCode(time.Unix(59, 1), config)
+		code = HmacSum(time.Unix(59, 1), config)
 
-		if expected := "6a3c23a3ac025bfd1e05b32e262bd210"; code != expected {
+		if expected := "6a3c23a3ac025bfd1e05b32e262bd210"; hex.EncodeToString(code) != expected {
 			t.Errorf("codes do not match: (%s) vs (%s)", expected, code)
 		}
 	})
@@ -72,7 +73,7 @@ func TestOTP(t *testing.T) {
 			t.Error(err)
 		}
 		var configParsed Config
-		err = Unmarshal(b, &configParsed)
+		err = configParsed.Unmarshal(b)
 		if err != nil {
 			t.Error(err)
 		}
@@ -80,16 +81,17 @@ func TestOTP(t *testing.T) {
 	})
 
 	t.Run("write to/read from", func(t *testing.T) {
+		var configParsed Config
 		buf := bytes.NewBuffer(nil)
 		if _, err := config.WriteTo(buf); err != nil {
 			t.Error(err)
 		}
 		r := bytes.NewReader(buf.Bytes())
-		configParsed, err := ReadConfig(r)
+		_, err := configParsed.ReadFrom(r)
 		if err != nil {
 			t.Error(err)
 		}
-		configsEqual(t, configParsed, config)
+		configsEqual(t, &configParsed, config)
 	})
 
 	t.Run("unmarshal unsupported version", func(t *testing.T) {
@@ -98,7 +100,7 @@ func TestOTP(t *testing.T) {
 		buf := bytes.NewBuffer(nil)
 		config.WriteTo(buf)
 		r := bytes.NewReader(buf.Bytes())
-		_, err := ReadConfig(r)
+		_, err := config.ReadFrom(r)
 		if err != ErrUnsupportedVersion {
 			t.Error("version should be unsupported")
 		}
