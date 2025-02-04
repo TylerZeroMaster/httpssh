@@ -36,9 +36,6 @@ func (args *KeygenCmd) Run() error {
 		if err != nil {
 			return err
 		}
-		if err := os.Chmod(p, 0o600); err != nil {
-			return err
-		}
 		dump(p, config, dumpOptions{args.Json})
 	}
 	return nil
@@ -103,6 +100,10 @@ func writeNewConfig(path string, period int, algorithm totp.Algorithm) (*totp.Co
 		return nil, err
 	}
 	defer fout.Close()
+	err = fout.Chmod(0o600)
+	if err != nil {
+		return nil, err
+	}
 	_, err = config.WriteTo(fout)
 	if err != nil {
 		return nil, err
